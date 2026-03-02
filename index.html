@@ -3,38 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Label Part (QR Code)</title>
+    <title>Cetak Label Part Landscape (QR Code)</title>
     
     <!-- Pustaka Eksternal -->
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Pustaka QR Code -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        surface: '#fafaf9',
-                        paper: '#ffffff',
-                        ink: '#1c1917',
-                        muted: '#78716c',
-                        accent: '#dc2626',
-                        accentDark: '#991b1b',
-                        border: '#a8a29e',
-                        borderLight: '#e7e5e4',
-                        success: '#16a34a',
-                        warning: '#ca8a04',
+                        ink: '#18181b',
+                        muted: '#71717a',
+                        accent: '#c2410c',
+                        accentDark: '#9a3412',
+                        success: '#059669',
+                        warning: '#d97706',
                     },
                     fontFamily: {
                         display: ['Space Grotesk', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
+                        mono: ['IBM Plex Mono', 'monospace'],
                     }
                 }
             }
@@ -43,211 +38,235 @@
     
     <style>
         :root {
-            --label-width: 47mm;
-            --label-height: 14mm;
-            --gap-x: 4mm;
-            --gap-y: 8mm;
+            --page-width: 297mm;
+            --page-height: 210mm;
             --margin-x: 5mm;
-            --margin-y: 10mm;
-            --qr-size: 10mm;
+            --margin-y: 5mm;
+            
+            /* Grid Config: 4 Kolom x 12 Baris */
+            --cols: 4;
+            --rows: 12;
+            
+            --gap-x: 2mm;
+            --gap-y: 1.2mm;
+            
+            /* UKURAN QR CODE DIPERBESAR */
+            --qr-size: 12mm; 
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
             font-family: 'Space Grotesk', sans-serif;
-            background: linear-gradient(135deg, #292524 0%, #1c1917 50%, #0c0a09 100%);
+            background: #1a1a1a;
             min-height: 100vh;
-            color: #1c1917;
+            color: #18181b;
+            position: relative;
+            overflow-x: hidden;
         }
         
-        body::before {
-            content: '';
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.03; pointer-events: none; z-index: 0;
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px; z-index: 0;
         }
         
-        .orb {
-            position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.15; pointer-events: none; z-index: 0;
+        .bg-gradient {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(194, 65, 12, 0.15), transparent), radial-gradient(ellipse 40% 30% at 100% 100%, rgba(217, 119, 6, 0.1), transparent);
+            z-index: 0;
         }
-        .orb-1 { width: 400px; height: 400px; background: #dc2626; top: -100px; right: -100px; animation: float 20s ease-in-out infinite; }
-        .orb-2 { width: 300px; height: 300px; background: #f59e0b; bottom: -50px; left: -50px; animation: float 25s ease-in-out infinite reverse; }
-        
-        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -30px) scale(1.05); } 66% { transform: translate(-20px, 20px) scale(0.95); } }
         
         .a4-paper {
-            width: 210mm; max-width: 100%; min-height: 297mm;
+            width: var(--page-width);
+            height: var(--page-height);
+            max-width: 100%;
+            aspect-ratio: 297 / 210;
             background: #ffffff;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-            margin: 20px 0; padding: 10mm; position: relative; border-radius: 2px;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 25px 100px -20px rgba(0, 0, 0, 0.5);
+            margin: 20px 0;
+            padding: var(--margin-y) var(--margin-x);
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
         }
         
+        .a4-paper::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #c2410c, #d97706, #c2410c);
+        }
+        
+        /* GRID SYSTEM: 4 Cols x 12 Rows */
+        .labels-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(12, 1fr);
+            gap: var(--gap-y) var(--gap-x);
+            height: 100%;
+        }
+
         .label-card {
-            border: 2px solid #1c1917; border-radius: 1px;
-            aspect-ratio: 47 / 14;
-            position: relative; background: #ffffff;
+            border: 1px solid #27272a;
+            border-radius: 2px;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #ffffff;
             transition: all 0.2s ease;
             display: flex; align-items: center;
             overflow: hidden;
         }
-        .label-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transform: translateY(-1px); }
-
-        .label-content {
-            display: flex;
-            width: 100%;
-            height: 100%;
-            align-items: center;
+        
+        .label-card:hover {
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(194, 65, 12, 0.3);
+            z-index: 10;
+            background: #fffaf0;
         }
+
+        .label-content { display: flex; width: 100%; height: 100%; align-items: center; padding: 1mm; }
         
         .qr-section {
-            width: 10mm;
-            height: 10mm;
+            width: var(--qr-size);
+            height: var(--qr-size);
             flex-shrink: 0;
-            margin-left: 2mm;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            background: #fff; border: 0.5px solid #e4e4e7; border-radius: 1px; padding: 0.2mm;
         }
         
-        .qr-section img, .qr-section canvas {
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-        }
+        .qr-section img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 
         .text-section {
-            flex-grow: 1;
-            padding: 0 2mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            border-left: 1px solid #e7e5e4;
-            margin-left: 2mm;
-            height: 100%;
+            flex-grow: 1; padding: 0 2mm;
+            display: flex; flex-direction: column; justify-content: center;
+            border-left: 1px solid #e4e4e7; margin-left: 1.5mm; height: 100%;
+            overflow: hidden; white-space: nowrap;
         }
         
-        .upload-area { position: relative; overflow: hidden; }
-        .upload-area::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.1), transparent);
-            transition: left 0.5s ease;
+        .upload-zone {
+            position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #fafaf9 0%, #f4f4f5 100%);
+            border: 2px dashed #a1a1aa;
+            transition: all 0.3s ease;
         }
-        .upload-area:hover::before { left: 100%; }
         
-        .toast { animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .upload-zone:hover { border-color: #c2410c; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); }
+        .upload-zone.dragover { border-color: #c2410c; background: #ffedd5; transform: scale(1.01); }
+
+        .btn-primary { background: linear-gradient(135deg, #c2410c 0%, #9a3412 100%); transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -10px rgba(194, 65, 12, 0.5); }
+
+        .toast { animation: toastSlide 0.4s ease; }
+        @keyframes toastSlide { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
-        .label-card { opacity: 0; animation: fadeUp 0.4s ease forwards; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #e7e5e4; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #a8a29e; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #78716c; }
+        .label-card { opacity: 0; animation: labelFade 0.3s ease forwards; }
+        @keyframes labelFade { from { opacity: 0; } to { opacity: 1; } }
         
         @media print {
             body { background: white; }
             .no-print { display: none !important; }
-            .a4-paper { box-shadow: none; margin: 0; }
+            .a4-paper { box-shadow: none; margin: 0; padding: var(--margin-y) var(--margin-x); width: 297mm; height: 210mm; }
+            .a4-paper::before { display: none; }
         }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+        
+        @media (max-width: 900px) {
+            .a4-paper { transform: scale(0.55); transform-origin: top center; margin-bottom: -450px; }
         }
     </style>
 </head>
-<body class="flex justify-center p-4 md:p-8 relative">
+<body class="flex flex-col items-center p-4 md:p-8 relative">
     
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-gradient"></div>
     
-    <div class="a4-paper relative z-10">
-        <div class="max-w-full mx-auto">
-            
-            <header class="no-print bg-stone-50 border-2 border-stone-400 rounded p-4 mb-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <!-- Header UI -->
+    <header class="no-print w-full max-w-4xl mb-6 relative z-10">
+        <div class="bg-stone-900/80 backdrop-blur border border-stone-700 rounded-xl p-4 shadow-2xl">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-accent to-accentDark rounded-lg flex items-center justify-center shadow-lg">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+                        </svg>
+                    </div>
                     <div>
-                        <h1 class="font-display text-xl font-bold text-ink tracking-tight">Sistem Cetak Label Part</h1>
-                        <p class="text-sm text-muted mt-1">Multi-upload dengan layout A4 & QR Code</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1 px-2 py-1 bg-stone-200 rounded text-xs font-mono text-muted">
-                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-                            Siap
-                        </span>
+                        <h1 class="font-display text-lg font-bold text-white tracking-tight">Label Generator</h1>
+                        <p class="text-xs text-stone-400">Layout: 4 Kolom x 12 Baris (QR Besar)</p>
                     </div>
                 </div>
-            </header>
-            
-            <!-- Control Section -->
-            <section class="no-print controls bg-stone-50 border-2 border-stone-300 rounded p-4 mb-4">
-                <div class="flex flex-col lg:flex-row gap-4">
-                    <div class="upload-area flex-1 border-2 border-dashed border-stone-400 rounded-lg p-6 text-center cursor-pointer transition-all hover:border-accent hover:bg-red-50">
-                        <input type="file" id="file-input-1" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <div class="text-3xl mb-2">
-                            <svg class="w-8 h-8 mx-auto text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                        </div>
-                        <strong class="block text-sm font-semibold text-ink">Upload Excel</strong>
-                        <p class="text-xs text-muted mt-1">Kolom: Part, Deskripsi, Qty</p>
-                        <p class="text-xs text-accent font-medium mt-1">QR Code dari Part Number</p>
-                    </div>
-                    <div class="flex flex-col gap-2 justify-center">
-                        <button id="btn-clear-1" class="hidden px-4 py-2 bg-white border-2 border-stone-300 rounded font-semibold text-sm hover:bg-stone-100 transition-all" onclick="clearData()">
-                            <span class="flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                                Reset
-                            </span>
-                        </button>
-                        <button id="btn-download-1" disabled class="px-4 py-2 bg-accent text-white rounded font-semibold text-sm hover:bg-accentDark transition-all disabled:opacity-50 disabled:cursor-not-allowed" onclick="generatePDF()">
-                            <span class="flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                </svg>
-                                Download PDF
-                            </span>
-                        </button>
-                    </div>
+                <div class="flex items-center gap-2 text-xs text-stone-300 bg-stone-800 px-3 py-1.5 rounded-full border border-stone-700">
+                    <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                    Siap Cetak
                 </div>
-            </section>
-            
-            <div class="flex justify-between items-center mb-3 no-print">
-                <h3 class="font-semibold text-sm text-ink">Pratinjau Label (QR Code)</h3>
-                <span id="label-count-1" class="px-3 py-1 bg-stone-100 rounded-full text-xs font-mono text-muted">0 Label</span>
             </div>
-            
-            <div class="labels-grid grid grid-cols-4 gap-[4mm]" id="labels-container-1">
-                <div class="col-span-4 text-center py-8 text-muted border-2 border-dashed border-stone-300 rounded text-sm">
-                    Upload file Excel untuk melihat pratinjau
+        </div>
+    </header>
+
+    <!-- Control Section -->
+    <section class="no-print w-full max-w-4xl mb-6 relative z-10">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="upload-zone flex-1 rounded-xl p-6 text-center cursor-pointer" id="upload-zone">
+                <input type="file" id="file-input-1" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                <div class="pointer-events-none relative z-1">
+                    <svg class="w-8 h-8 mx-auto mb-2 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <strong class="block text-sm font-semibold text-ink">Upload Excel</strong>
+                    <p class="text-xs text-muted mt-1">Kolom: Part, Deskripsi, Qty</p>
                 </div>
             </div>
             
+            <div class="flex flex-col gap-2 justify-center min-w-[140px]">
+                <button id="btn-clear-1" class="hidden px-4 py-2 bg-white border border-stone-300 rounded-lg font-semibold text-xs hover:bg-stone-50 transition-all" onclick="clearData()">
+                    Reset
+                </button>
+                <button id="btn-download-1" disabled class="btn-primary px-4 py-3 text-white rounded-lg font-semibold text-sm disabled:opacity-40" onclick="generatePDF()">
+                    Download PDF
+                </button>
+            </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 text-xs text-stone-400">
+             <span id="label-count-1">0 Label</span>
+             <span>Ukuran Kertas: A4 Landscape</span>
+        </div>
+    </section>
+    
+    <!-- Preview Area -->
+    <div class="a4-paper relative z-10 overflow-hidden">
+        <div class="labels-container" id="labels-container-1">
+            <div class="col-span-full row-span-full flex items-center justify-center h-full text-muted text-sm border-2 border-dashed border-stone-200 rounded-lg">
+                <div class="text-center p-4">
+                    <svg class="w-10 h-10 mx-auto mb-2 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Upload file Excel untuk melihat pratinjau<br>
+                    <span class="text-stone-400">(Max 48 label per halaman)</span>
+                </div>
+            </div>
         </div>
     </div>
     
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
 
 <script>
     // === STATE ===
     let labelsToPrint = [];
     
-    // === PDF CONFIG ===
+    // === PDF CONFIG (4 Cols x 12 Rows) ===
     const PDF_CFG = {
-        w: 47,
-        h: 14,
+        orientation: 'l', 
+        unit: 'mm',
+        format: 'a4',
+        pageWidth: 297,
+        pageHeight: 210,
         marginX: 5,
-        marginY: 10,
-        gapX: 4,
-        gapY: 8,
-        qrSize: 10
+        marginY: 5,
+        cols: 4,
+        rows: 12,
+        gapX: 2,
+        gapY: 1.2,
+        qrSize: 12,          // UKURAN QR DIPERBESAR (dari 10 ke 12)
+        fontSizePart: 9,
+        fontSizeDesc: 5.5
     };
     
     // === FILE HANDLING ===
@@ -255,22 +274,26 @@
         if (e.target.files.length) handleFile(e.target.files[0]);
     });
     
+    const uploadZone = document.getElementById('upload-zone');
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault(); uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
     function handleFile(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const workbook = XLSX.read(e.target.result, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                
                 if (json.length === 0) throw new Error("File kosong");
-                
                 processData(json);
                 showToast(`Berhasil memuat ${json.length} baris data`, 'success');
             } catch (err) {
                 showToast('Gagal membaca file: ' + err.message, 'error');
-                console.error(err);
             }
         };
         reader.readAsArrayBuffer(file);
@@ -291,15 +314,10 @@
         });
         
         const labels = [];
-        
         data.forEach(item => {
             let q = parseInt(item.qty);
             if (isNaN(q) || q < 1) q = 1;
-            
-            // Gandakan sesuai Qty
-            for (let i = 0; i < q; i++) {
-                labels.push({ ...item });
-            }
+            for (let i = 0; i < q; i++) labels.push({ ...item });
         });
         
         labelsToPrint = labels;
@@ -310,15 +328,7 @@
         labelsToPrint = [];
         document.getElementById('file-input-1').value = '';
         renderLabels();
-        showToast('Data telah direset', 'success');
-    }
-    
-    // === QR CODE HELPER ===
-    function generateQRDataURL(text, size) {
-        const qr = qrcode(0, 'L');
-        qr.addData(text);
-        qr.make();
-        return qr.createDataURL(size, 0);
+        showToast('Data direset', 'success');
     }
     
     // === RENDER LABELS ===
@@ -329,10 +339,7 @@
         const btnDownload = document.getElementById('btn-download-1');
         
         if (labelsToPrint.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-4 text-center py-8 text-muted border-2 border-dashed border-stone-300 rounded text-sm">
-                    Upload file Excel untuk melihat pratinjau
-                </div>`;
+            container.innerHTML = `<div class="col-span-full row-span-full flex items-center justify-center h-full text-muted text-sm border-2 border-dashed border-stone-200 rounded-lg"><div class="text-center p-4"><svg class="w-10 h-10 mx-auto mb-2 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Upload file Excel untuk melihat pratinjau</div></div>`;
             btnDownload.disabled = true;
             btnClear.classList.add('hidden');
             countBadge.textContent = '0 Label';
@@ -343,180 +350,141 @@
         btnClear.classList.remove('hidden');
         countBadge.textContent = `${labelsToPrint.length} Label`;
         
-        const limit = 96;
-        const dataToRender = labelsToPrint.slice(0, limit);
-        
         container.innerHTML = '';
+        
+        const displayLimit = 48; 
+        const dataToRender = labelsToPrint.slice(0, displayLimit);
         
         dataToRender.forEach((item, index) => {
             const el = document.createElement('div');
             el.className = 'label-card';
-            el.style.animationDelay = `${index * 20}ms`;
-            
-            const qrURL = generateQRDataURL(item.part, 2);
-            
+            el.style.animationDelay = `${index * 15}ms`;
             el.innerHTML = `
                 <div class="label-content">
-                    <div class="qr-section">
-                        <img src="${qrURL}" alt="QR">
-                    </div>
+                    <div class="qr-section"><img src="${generateQRDataURL(item.part, 3)}" alt="QR"></div>
                     <div class="text-section">
-                        <div class="font-mono font-bold text-[10px] text-ink truncate leading-tight">${escapeHtml(item.part)}</div>
-                        <div class="text-[7px] text-muted truncate leading-tight mt-0.5">${escapeHtml(item.desc)}</div>
+                        <div class="font-mono font-bold text-[11px] text-ink truncate leading-tight">${escapeHtml(item.part)}</div>
+                        <div class="text-[6px] text-muted truncate mt-0.5 leading-tight">${escapeHtml(item.desc)}</div>
                     </div>
-                </div>
-            `;
-            
+                </div>`;
             container.appendChild(el);
         });
         
-        if (labelsToPrint.length > limit) {
-            const warning = document.createElement('div');
-            warning.className = 'col-span-4 text-center py-4 text-warning text-sm font-medium';
-            warning.textContent = `Menampilkan ${limit} dari ${labelsToPrint.length} label. Download PDF untuk semua label.`;
-            container.appendChild(warning);
+        if (labelsToPrint.length > displayLimit) {
+            showToast(`Menampilkan 48 dari ${labelsToPrint.length} label. Download PDF untuk semua.`, 'info');
         }
     }
     
     // === GENERATE PDF ===
-    async function generatePDF() {
+    function generatePDF() {
         if (!labelsToPrint.length) return;
-        
         showToast('Membuat PDF...', 'info');
         
         setTimeout(() => {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            const H = 297;
+            const doc = new jsPDF({ 
+                orientation: PDF_CFG.orientation, 
+                unit: PDF_CFG.unit, 
+                format: PDF_CFG.format 
+            });
+            
             const cfg = PDF_CFG;
             
-            let x = cfg.marginX;
-            let y = cfg.marginY;
-            let colIndex = 0;
-            const colsPerRow = 4;
+            // Calculate dimensions
+            const usableW = cfg.pageWidth - (2 * cfg.marginX);
+            const usableH = cfg.pageHeight - (2 * cfg.marginY);
             
+            const labelW = (usableW - ((cfg.cols - 1) * cfg.gapX)) / cfg.cols;
+            const labelH = (usableH - ((cfg.rows - 1) * cfg.gapY)) / cfg.rows;
+            
+            let colIdx = 0;
+            let rowIdx = 0;
+
             labelsToPrint.forEach((item, i) => {
-                if (y + cfg.h > H - cfg.marginY) {
+                if (rowIdx >= cfg.rows) {
                     doc.addPage();
-                    y = cfg.marginY;
-                    x = cfg.marginX;
-                    colIndex = 0;
+                    rowIdx = 0;
+                    colIdx = 0;
                 }
                 
-                if (colIndex >= colsPerRow) {
-                    y += cfg.h + cfg.gapY;
-                    x = cfg.marginX;
-                    colIndex = 0;
-                    
-                    if (y + cfg.h > H - cfg.marginY) {
-                        doc.addPage();
-                        y = cfg.marginY;
-                        x = cfg.marginX;
-                    }
-                }
+                const x = cfg.marginX + (colIdx * (labelW + cfg.gapX));
+                const y = cfg.marginY + (rowIdx * (labelH + cfg.gapY));
                 
-                // Draw border
+                // Draw Border
                 doc.setDrawColor(0);
-                doc.setLineWidth(0.5);
-                doc.rect(x, y, cfg.w, cfg.h);
+                doc.setLineWidth(0.2);
+                doc.rect(x, y, labelW, labelH);
                 
-                // Draw QR
+                // Draw QR (LOGIC DISESUAIKAN)
                 const qr = qrcode(0, 'L');
                 qr.addData(item.part);
                 qr.make();
                 
-                const qrModuleCount = qr.getModuleCount();
-                const qrDisplaySize = cfg.qrSize;
-                const qrCellSize = qrDisplaySize / qrModuleCount;
+                const moduleCount = qr.getModuleCount();
+                const cellSize = cfg.qrSize / moduleCount;
+                const qrX = x + 1.5;
+                const qrY = y + (labelH - cfg.qrSize) / 2; // Centering QR Vertically
                 
-                const qrX = x + 2;
-                const qrY = y + (cfg.h - qrDisplaySize) / 2;
-                
-                doc.setDrawColor(0);
                 doc.setFillColor(0, 0, 0);
-                
-                for (let row = 0; row < qrModuleCount; row++) {
-                    for (let col = 0; col < qrModuleCount; col++) {
-                        if (qr.isDark(row, col)) {
-                            doc.rect(
-                                qrX + col * qrCellSize, 
-                                qrY + row * qrCellSize, 
-                                qrCellSize, 
-                                qrCellSize, 
-                                'F'
-                            );
+                for (let r = 0; r < moduleCount; r++) {
+                    for (let c = 0; c < moduleCount; c++) {
+                        if (qr.isDark(r, c)) {
+                            doc.rect(qrX + c * cellSize, qrY + r * cellSize, cellSize, cellSize, 'F');
                         }
                     }
                 }
                 
-                // Divider line
+                // Divider Line
                 doc.setDrawColor(200, 200, 200);
                 doc.setLineWidth(0.1);
-                doc.line(x + cfg.qrSize + 3, y + 2, x + cfg.qrSize + 3, y + cfg.h - 2);
+                doc.line(x + cfg.qrSize + 2.5, y + 1, x + cfg.qrSize + 2.5, y + labelH - 1);
                 
-                // Part Number Text
+                // Text Part Number
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(cfg.fontSizePart); 
+                doc.setTextColor(0);
+                doc.text(item.part, x + cfg.qrSize + 4, y + labelH/2 - 0.5);
                 
-                const textStartX = x + cfg.qrSize + 4;
-                const textWidth = cfg.w - cfg.qrSize - 6;
-                
-                const partLines = doc.splitTextToSize(item.part, textWidth);
-                doc.text(partLines[0] || '', textStartX, y + 6);
-                
-                // Description
+                // Text Description
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6);
-                doc.setTextColor(100, 100, 100);
-                const descLines = doc.splitTextToSize(item.desc, textWidth);
-                doc.text(descLines[0] || '', textStartX, y + 10.5);
+                doc.setFontSize(cfg.fontSizeDesc); 
+                doc.setTextColor(100);
+                doc.text(item.desc.substring(0, 50), x + cfg.qrSize + 4, y + labelH/2 + 2);
                 
-                x += cfg.w + cfg.gapX;
-                colIndex++;
+                colIdx++;
+                if (colIdx >= cfg.cols) {
+                    colIdx = 0;
+                    rowIdx++;
+                }
             });
             
-            const timestamp = new Date().toISOString().slice(0, 10);
-            doc.save(`Label_QR_${timestamp}.pdf`);
-            showToast('PDF berhasil didownload!', 'success');
-            
+            doc.save(`Label_4x12_${new Date().toISOString().slice(0, 10)}.pdf`);
+            showToast('PDF berhasil dibuat!', 'success');
         }, 100);
     }
     
     // === UTILITIES ===
+    function generateQRDataURL(text, size) {
+        const qr = qrcode(0, 'L');
+        qr.addData(text);
+        qr.make();
+        return qr.createDataURL(size, 0);
+    }
+    
     function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = String(text);
         return div.innerHTML;
     }
     
     function showToast(msg, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
-        
-        const bgColors = {
-            success: 'bg-green-600',
-            error: 'bg-red-600',
-            info: 'bg-stone-800'
-        };
-        
-        toast.className = `toast ${bgColors[type]} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2`;
-        
-        const icons = {
-            success: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',
-            error: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>',
-            info: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
-        };
-        
-        toast.innerHTML = `${icons[type]}<span>${msg}</span>`;
+        const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-stone-800' };
+        toast.className = `toast ${colors[type]} text-white px-4 py-2 rounded shadow-lg text-sm flex items-center gap-2`;
+        toast.innerHTML = `<span>${msg}</span>`;
         container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
     }
 </script>
 
